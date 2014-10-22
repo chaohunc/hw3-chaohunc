@@ -4,7 +4,7 @@
 	<groupId>edu.cmu.lti.11791.f14.hw3
 </groupId>
 	<artifactId>hw3-chaohunc</artifactId>
-	<version>0.0.6</version>
+	<version>0.0.7</version>
 
 	<repositories>
 		<repository>
