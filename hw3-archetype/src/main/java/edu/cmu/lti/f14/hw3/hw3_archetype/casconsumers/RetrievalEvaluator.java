@@ -28,48 +28,56 @@ import edu.cmu.lti.f14.hw3.hw3_archetype.typesystems.Token;
 import edu.cmu.lti.f14.hw3.hw3_archetype.utils.Utils;
 
 public class RetrievalEvaluator extends CasConsumer_ImplBase {
-  class ScoreObj
-  {
-      int qid;
-      double score;
-      String docContent;
-      int rank;
-      public boolean relevant;
+  class ScoreObj {
+    int qid;
+
+    double score;
+
+    String docContent;
+
+    int rank;
+
+    public boolean relevant;
   }
-  /** query id number **/
+
+  /** query id **/
   public ArrayList<Integer> qIdList;
 
-  /** query and text relevant values **/
+  /** save relevant documents for each query **/
   public HashMap<Integer, ArrayList<Integer>> relList;
 
+  /** save document frequency for each term **/
   public HashMap<String, Integer> df;
 
-  public ArrayList<HashMap<String, Integer>> docList;
-
+  /** save documents with hashmap type by query ID **/
   public HashMap<Integer, ArrayList<HashMap<String, Integer>>> qIdToDocList;
 
-  public  HashMap<Integer, ArrayList<String>> docContenttList;
+  /** save each documents content by query ID **/
+  public HashMap<Integer, ArrayList<String>> docContenttList;
 
+  /** number of docs **/
   private int totdocNum;
 
+  /** total length of docs **/
   private int totdoclength;
-  
+
+  String SimilarityFunction = "CosineSimilarity";
+
   public void initialize() throws ResourceInitializationException {
 
     qIdList = new ArrayList<Integer>();
 
     relList = new HashMap<Integer, ArrayList<Integer>>();
 
-     docContenttList = new HashMap<Integer, ArrayList<String>>();
-
-    docList = new ArrayList<HashMap<String, Integer>>();
+    docContenttList = new HashMap<Integer, ArrayList<String>>();
 
     df = new HashMap<String, Integer>();
 
     qIdToDocList = new HashMap<Integer, ArrayList<HashMap<String, Integer>>>();
-    
-    totdocNum=1;
-    totdoclength=0;
+
+    totdocNum = 1;
+
+    totdoclength = 0;
   }
 
   /**
@@ -90,49 +98,49 @@ public class RetrievalEvaluator extends CasConsumer_ImplBase {
 
     if (it.hasNext()) {
       Document doc = (Document) it.next();
-
-      // Make sure that your previous annotators have populated this in CAS
       FSList fsTokenList = doc.getTokenList();
       ArrayList<Token> tokenList = Utils.fromFSListToCollection(fsTokenList, Token.class);
-
       HashMap<String, Integer> tmap = new HashMap<String, Integer>();
       Iterator<Token> iter = tokenList.iterator();
       while (iter.hasNext()) {
         Token t = iter.next();
         tmap.put(t.getText(), t.getFrequency());
+
+        // count document frequency
         if (!df.containsKey(t.getText()))
           df.put(t.getText(), 1);
-        else
-        {
-          df.put(t.getText(),df.get(t.getText())+1);
-        }          
+        else {
+          df.put(t.getText(), df.get(t.getText()) + 1);
+        }
       }
+
+      // count total length of documents
       totdoclength += doc.getText().length();
 
-      
-      docList.add(tmap);
       qIdList.add(doc.getQueryID());
+
+      // if the list for the query had been created
       if (qIdToDocList.containsKey(doc.getQueryID())) {
         ArrayList<HashMap<String, Integer>> alist = qIdToDocList.get(doc.getQueryID());
         ArrayList<String> dlist = docContenttList.get(doc.getQueryID());
         if (doc.getRelevanceValue() == 99) {
           alist.add(0, tmap);
-          dlist.add(0,doc.getText());
-          if (relList.containsKey(doc.getQueryID()))
-          {
-            ArrayList<Integer> c =relList.get(doc.getQueryID());
-            ArrayList <Integer> b = new ArrayList<Integer>();
-            for (int i=0;i<c.size();i++)
-              b.add(c.get(0)+1);
-            relList.put(doc.getQueryID(), b);
-//            for (in)
+          // put the query document in the first of list
+          dlist.add(0, doc.getText());
+
+          // if there is relevant document existing in reList for now query, record the new position
+          // of relevant document
+          if (relList.containsKey(doc.getQueryID())) {
+            ArrayList<Integer> rlist = relList.get(doc.getQueryID());
+            ArrayList<Integer> tempilist = new ArrayList<Integer>();
+            for (int i = 0; i < rlist.size(); i++)
+              tempilist.add(rlist.get(0) + 1);
+            relList.put(doc.getQueryID(), tempilist);
           }
-          // relList
-        } 
-        else
-        {
+        } else {
           alist.add(tmap);
           dlist.add(doc.getText());
+
         }
       } else {
         ArrayList<HashMap<String, Integer>> alist = new ArrayList<HashMap<String, Integer>>();
@@ -140,26 +148,22 @@ public class RetrievalEvaluator extends CasConsumer_ImplBase {
         alist.add(tmap);
         dlist.add(doc.getText());
         qIdToDocList.put(doc.getQueryID(), alist);
-        docContenttList.put(doc.getQueryID(),dlist);
+        docContenttList.put(doc.getQueryID(), dlist);
       }
 
-   //   ArrayList<HashMap<String, Integer>> alist = qIdToDocList.get(doc.getQueryID());
+      // process relevant document
       if (doc.getRelevanceValue() == 1) {
         int nowSize = qIdToDocList.get(doc.getQueryID()).size();
         if (relList.containsKey(doc.getQueryID())) {
           ArrayList<Integer> arr = relList.get(doc.getQueryID());
-          arr.add(nowSize-1);
+          arr.add(nowSize - 1);
           relList.put(doc.getQueryID(), arr);
         } else {
           ArrayList<Integer> arr = new ArrayList<Integer>();
-          arr.add(nowSize-1);
+          arr.add(nowSize - 1);
           relList.put(doc.getQueryID(), arr);
         }
       }
-      // relList.add(doc.getRelevanceValue());
-
-      // Do something useful here
-
     }
 
   }
@@ -173,166 +177,175 @@ public class RetrievalEvaluator extends CasConsumer_ImplBase {
 
     super.collectionProcessComplete(arg0);
 
-    ArrayList<ScoreObj> finallist= new ArrayList<ScoreObj>();
-    double queryScore=0;
-    int queryCount=0;
+    ArrayList<ScoreObj> finallist = new ArrayList<ScoreObj>();
+    double queryScore = 0;
+    int queryCount = 0;
 
     for (Entry<Integer, ArrayList<HashMap<String, Integer>>> docs : qIdToDocList.entrySet()) {
-      ArrayList<ScoreObj> slist= new ArrayList<ScoreObj>();
+      ArrayList<ScoreObj> slist = new ArrayList<ScoreObj>();
       ArrayList<Integer> arr = relList.get(docs.getKey());
-      
+
       double cosScore = 0;
       // TODO :: compute the cosine similarity measure
-      for (int i = 1; i < docs.getValue().size();i++)
-      {
-        cosScore = computeCosineSimilarity ( docs.getValue().get(0), docs.getValue().get(i)) ;
-        //cosScore = computeTFIDFCosineSimilarity ( docs.getValue().get(0), docs.getValue().get(i)) ;
+      for (int i = 1; i < docs.getValue().size(); i++) {
+
         int doclength = docContenttList.get(docs.getKey()).get(i).length();
-        
-       // cosScore = computeBM25 ( docs.getValue().get(0), docs.getValue().get(i),(double)doclength) ;
+
+        if (SimilarityFunction.equals("CosineSimilarity"))
+          cosScore = computeCosineSimilarity(docs.getValue().get(0), docs.getValue().get(i));
+        else if (SimilarityFunction.equals("TFIDF"))
+          cosScore = computeTFIDFCosineSimilarity(docs.getValue().get(0), docs.getValue().get(i));
+        else if (SimilarityFunction.equals("BM25"))
+          cosScore = computeBM25(docs.getValue().get(0), docs.getValue().get(i), (double) doclength);
+
         ScoreObj sobj = new ScoreObj();
         sobj.rank = i;
         sobj.score = cosScore;
         if (arr.contains(i))
-          sobj.relevant = true; 
+          sobj.relevant = true;
         else
-          sobj.relevant = false; 
+          sobj.relevant = false;
         slist.add(sobj);
+
       }
-      System.out.println(docContenttList.get(docs.getKey()).get(0));
+
+      // Ranked lists by Score
       Collections.sort(slist, new ScoreObjComparator());
       // TODO :: compute the rank of retrieved sentences
-      
-      for (int i=0;i<slist.size();i++)
-        System.out.println("cos=" + slist.get(i).score + " rank="+ (i+1) + " qid="+ docs.getKey() + " " + docContenttList.get(docs.getKey()).get(slist.get(i).rank));
-      for (int i=0;i<slist.size();i++)
-      {
-        //System.out.println("cos=" + slist.get(i).score + " rank="+ (i+1) + " qid="+ docs.getKey() + " " + docContenttList.get(docs.getKey()).get(slist.get(i).rank));
-        
-        if (arr.contains(slist.get(i).rank))
-        {
+      for (int i = 0; i < slist.size(); i++)
+        System.out.println("cos=" + slist.get(i).score + " rank=" + (i + 1) + " qid="
+                + docs.getKey() + " " + docContenttList.get(docs.getKey()).get(slist.get(i).rank));
+      for (int i = 0; i < slist.size(); i++) {
+        if (arr.contains(slist.get(i).rank)) {
           ScoreObj sobj = new ScoreObj();
           sobj.qid = docs.getKey();
-          sobj.rank = i+1;
+          sobj.rank = i + 1;
           sobj.score = slist.get(i).score;
           sobj.docContent = docContenttList.get(docs.getKey()).get(slist.get(i).rank);
-          System.out.println("cos=" + sobj.score + " rank="+sobj.rank + " qid="+ sobj.qid + " rel=1 " + sobj.docContent);
-          queryScore += 1/(double)sobj.rank;
-          
+          queryScore += 1 / (double) sobj.rank;
           queryCount++;
           finallist.add(sobj);
           break;
         }
       }
-     // System.out.print(docContenttList.get(docs.getKey()).toString());
-    //  for (int )
     }
+
+    // Ranked lists by ID
     Collections.sort(finallist, new ScoreObjQIDComparator());
 
-   
-    
     // TODO :: compute the metric:: mean reciprocal rank
     BufferedWriter oFile2 = null;
-      oFile2 = new BufferedWriter(new FileWriter(new File(
-              "src/main/resources/data/report.txt")));
-      DecimalFormat dformat = new DecimalFormat("0.0000");
-   for (int i=0; i<finallist.size();i++)
-   {
-      ScoreObj sobj=finallist.get(i);
-      oFile2.write("cos=" + dformat.format(sobj.score) + "\trank="+sobj.rank + "\tqid="+ sobj.qid + "\trel=1\t" + sobj.docContent+"\n");
-      System.out.print((1/(double)sobj.rank) + " ");
-   } 
-   System.out.println("");
-   //for (Entry<String, Integer> q : df.entrySet()) {
-   //  System.out.println(q.getKey()+ " "+q.getValue());
-   //}
-   double metric_mrr = compute_mrr(queryScore, queryCount);
+    oFile2 = new BufferedWriter(new FileWriter(new File("src/main/resources/data/report.txt")));
+    DecimalFormat dformat = new DecimalFormat("0.0000");
+    for (int i = 0; i < finallist.size(); i++) {
+      ScoreObj sobj = finallist.get(i);
+      oFile2.write("cos=" + dformat.format(sobj.score) + "\trank=" + sobj.rank + "\tqid="
+              + sobj.qid + "\trel=1\t" + sobj.docContent + "\n");
+      System.out.print((1 / (double) sobj.rank) + " ");
+    }
+
+    double metric_mrr = compute_mrr(queryScore, queryCount);
     System.out.println(" (MRR) Mean Reciprocal Rank ::" + metric_mrr);
-    oFile2.write("MRR="+dformat.format(metric_mrr));
+    oFile2.write("MRR=" + dformat.format(metric_mrr));
     oFile2.close();
   }
 
   /**
+   * Computed CosineSimilarity score by given two hashmaps
    * 
-   * @return cosine_similarity
+   * @return score of CosineSimilarity
    */
   private double computeCosineSimilarity(Map<String, Integer> queryVector,
           Map<String, Integer> docVector) {
     double cosScore = 0;
     for (Entry<String, Integer> q : queryVector.entrySet()) {
-      String key =  q.getKey();
-   //   System.out.println(q.getKey()+ " "+q.getValue());
+      String key = q.getKey();
+      // System.out.println(q.getKey()+ " "+q.getValue());
       if (docVector.containsKey(key)) {
         cosScore += docVector.get(key) * queryVector.get(key);
       }
     }
     double qDis = 0;
-    for( Entry<String, Integer> entry: queryVector.entrySet()){
-      qDis += Math.pow((double)entry.getValue(),2);
+    for (Entry<String, Integer> entry : queryVector.entrySet()) {
+      qDis += Math.pow((double) entry.getValue(), 2);
     }
     qDis = Math.sqrt(qDis);
-    
+
     double docDis = 0;
-    for( Entry<String, Integer> entry: docVector.entrySet()){
-      docDis += Math.pow((double)entry.getValue(),2);
+    for (Entry<String, Integer> entry : docVector.entrySet()) {
+      docDis += Math.pow((double) entry.getValue(), 2);
     }
-    
+
     docDis = Math.sqrt(docDis);
-    
+
     // TODO :: compute cosine similarity between two sentences
-    
-    return cosScore / (docDis*qDis);
+
+    return cosScore / (docDis * qDis);
   }
+
+  /**
+   * Computed TfIdf score by given two hashmaps
+   * 
+   * @return score of TfIdf
+   */
 
   private double computeTFIDFCosineSimilarity(Map<String, Integer> queryVector,
           Map<String, Integer> docVector) {
     double cosScore = 0;
     for (Entry<String, Integer> q : queryVector.entrySet()) {
-      String key =  q.getKey();
-   //   System.out.println(q.getKey()+ " "+q.getValue());
+      String key = q.getKey();
       if (docVector.containsKey(key)) {
-        cosScore += (docVector.get(key)* Math.log(totdocNum/(df.get(key)+1))) * (queryVector.get(key)* Math.log(totdocNum/(df.get(key)+1)));
+        cosScore += (docVector.get(key) * Math.log(totdocNum / (df.get(key) + 1)))
+                * (queryVector.get(key) * Math.log(totdocNum / (df.get(key) + 1)));
       }
     }
     double qDis = 0;
-    for( Entry<String, Integer> entry: queryVector.entrySet()){
-      qDis += Math.pow((double)entry.getValue(),2)*Math.log(totdocNum/(df.get(entry.getKey())+1));
+    for (Entry<String, Integer> entry : queryVector.entrySet()) {
+      qDis += Math.pow((double) entry.getValue(), 2)
+              * Math.log(totdocNum / (df.get(entry.getKey()) + 1));
     }
     qDis = Math.sqrt(qDis);
-    
+
     double docDis = 0;
-    for( Entry<String, Integer> entry: docVector.entrySet()){
-      docDis += Math.pow((double)entry.getValue(),2)*Math.log(totdocNum/(df.get(entry.getKey())+1));
+    for (Entry<String, Integer> entry : docVector.entrySet()) {
+      docDis += Math.pow((double) entry.getValue(), 2)
+              * Math.log(totdocNum / (df.get(entry.getKey()) + 1));
     }
-    
+
     docDis = Math.sqrt(docDis);
-    
+
     // TODO :: compute cosine similarity between two sentences
-    
-    return cosScore / (docDis*qDis);
+
+    return cosScore / (docDis * qDis);
   }
-  
-  private double computeBM25(Map<String, Integer> queryVector,
-          Map<String, Integer> docVector, double doclength) {
-    double b=0.75;
+
+  /**
+   * Computed BM25 score by given two hashmaps
+   * 
+   * @return score of BM25
+   */
+
+  private double computeBM25(Map<String, Integer> queryVector, Map<String, Integer> docVector,
+          double doclength) {
+    double b = 0.75;
     double k1 = 1.6;
-            
-    double averageDoclen = ((double)totdoclength/(double)(totdocNum-1));
+
+    double averageDoclen = ((double) totdoclength / (double) (totdocNum - 1));
     double bmScore = 0;
     for (Entry<String, Integer> q : queryVector.entrySet()) {
-      String key =  q.getKey();
-   //   System.out.println(q.getKey()+ " "+q.getValue());
+      String key = q.getKey();
       if (docVector.containsKey(key)) {
-        double IDF = Math.log((totdocNum-df.get(key)+0.5)/(df.get(key)+0.5));
-        double TF= docVector.get(key)*(k1+1)/ (docVector.get(key) + k1*(1-b+b*(doclength/averageDoclen)));
-        bmScore += IDF*TF;
-        
+        double IDF = Math.log((totdocNum - df.get(key) + 0.5) / (df.get(key) + 0.5));
+        double TF = docVector.get(key) * (k1 + 1)
+                / (docVector.get(key) + k1 * (1 - b + b * (doclength / averageDoclen)));
+        bmScore += IDF * TF;
+
       }
     }
-    
+
     // TODO :: compute cosine similarity between two sentences
-    
-    return bmScore ;
+
+    return bmScore;
   }
 
   /**
@@ -340,10 +353,10 @@ public class RetrievalEvaluator extends CasConsumer_ImplBase {
    * @return mrr
    */
   private double compute_mrr(double queryScore, int queryNum) {
-    
+
     // TODO :: compute Mean Reciprocal Rank (MRR) of the text collection
 
-    return queryScore / (double)queryNum;
+    return queryScore / (double) queryNum;
   }
 
 }

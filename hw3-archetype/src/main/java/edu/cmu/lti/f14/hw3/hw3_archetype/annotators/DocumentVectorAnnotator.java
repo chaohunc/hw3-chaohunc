@@ -1,4 +1,3 @@
-
 package edu.cmu.lti.f14.hw3.hw3_archetype.annotators;
 
 import java.io.BufferedReader;
@@ -31,6 +30,12 @@ import edu.cmu.lti.f14.hw3.hw3_archetype.typesystems.Token;
 
 public class DocumentVectorAnnotator extends JCasAnnotator_ImplBase {
   HashSet<String> stopwordMap = new HashSet<String>();
+
+  boolean ToStem = false;
+
+  boolean RemoveStopWords = false;
+
+  boolean RemoveSpecialCharacter = false;
 
   @Override
   public void initialize(UimaContext aContext) throws ResourceInitializationException {
@@ -70,46 +75,45 @@ public class DocumentVectorAnnotator extends JCasAnnotator_ImplBase {
   }
 
   /**
+   * tokenize the input sentence, and output them as list
    * 
-   * @param jcas
    * @param doc
    */
   List<String> tokenize0(String doc) {
     List<String> res = new ArrayList<String>();
-    boolean ToStem =false;
-    for (String s: doc.split("\\s+"))
-    {
-      
-      String str;
-      if (ToStem == true)
-      {
-      Stemmer st = new Stemmer();
-      st.add(s.toCharArray(), s.length());
-      st.stem();
-      s =st.toString();
+
+    for (String s : doc.split("\\s+")) {
+      // implement stemming algorithm if ToStem == true
+      if (ToStem == true) {
+        Stemmer st = new Stemmer();
+        st.add(s.toCharArray(), s.length());
+        st.stem();
+        s = st.toString();
       }
       res.add(s);
     }
     return res;
   }
-  
+
   private void createTermFreqVector(JCas jcas, Document doc) {
 
     String docText = doc.getText();
 
     HashMap<String, Integer> hmap = new HashMap<String, Integer>();
-
-    // List<String> terms = tokenize0(docText.toLowerCase().replaceAll(",.'?!-;\"", ""));
-   
+    List<String> terms;
     
-   List<String> terms = tokenize0(docText);
+    if (RemoveSpecialCharacter == true)
+      terms = tokenize0(docText.toLowerCase().replaceAll(",.'?!-;\"", ""));
+    else
+      terms = tokenize0(docText);
 
-    
+    // put terms into hmap
     for (String term : terms) {
-      // System.out.println(stopwordMap.size());
-      //if (stopwordMap.contains(term.toLowerCase().trim()))
-      //  continue;
-      
+
+      if (RemoveStopWords == true)
+        if (stopwordMap.contains(term.toLowerCase().trim()))
+          continue;
+
       if (hmap.containsKey(term)) {
         int termfreq = hmap.get(term);
         hmap.put(term, termfreq + 1);
@@ -117,6 +121,7 @@ public class DocumentVectorAnnotator extends JCasAnnotator_ImplBase {
         hmap.put(term, 1);
     }
 
+    //read token from hmap and send them out as tokenlist
     ArrayList<Token> tokenlist = new ArrayList<Token>();
     for (Entry<String, Integer> t : hmap.entrySet()) {
       Token token = new Token(jcas);

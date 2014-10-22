@@ -62,7 +62,6 @@ public class VectorSpaceRetrieval {
 		BufferedReader br = new BufferedReader(new InputStreamReader(docUrl.openStream()));
 		while ((sLine = br.readLine()) != null)   {
 			aCas.setDocumentText(sLine);
-//			sLine.split(regex);
 			System.out.println(sLine);
 			anAnalysisEngine.process(aCas);
 			aCas.reset();
