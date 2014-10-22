@@ -3,9 +3,8 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>edu.cmu.lti.11791.f14.hw3
 </groupId>
-	<artifactId>hw3-archetype
-</artifactId>
-	<version>0.0.5</version>
+	<artifactId>hw3-chaohunc</artifactId>
+	<version>0.0.6</version>
 
 	<repositories>
 		<repository>
@@ -118,8 +117,8 @@
 		</plugins>
 	</build>
 	<scm>
-		<connection>scm:git:https://github.com/chaohunc/hw2-chaohunc.git</connection>
-		<developerConnection>scm:git:https://github.com/chaohunc/hw2-chaohunc.git</developerConnection>
+		<connection>scm:git:https://github.com/chaohunc/hw3-chaohunc.git</connection>
+		<developerConnection>scm:git:https://github.com/chaohunc/hw3-chaohunc.git</developerConnection>
 	</scm>
 		<properties>
 		<maven.javadoc.failOnError>false</maven.javadoc.failOnError>

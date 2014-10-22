@@ -235,7 +235,7 @@ public class RetrievalEvaluator extends CasConsumer_ImplBase {
 
     // TODO :: compute the metric:: mean reciprocal rank
     BufferedWriter oFile2 = null;
-    oFile2 = new BufferedWriter(new FileWriter(new File("src/main/resources/data/report.txt")));
+    oFile2 = new BufferedWriter(new FileWriter(new File("report.txt")));
     DecimalFormat dformat = new DecimalFormat("0.0000");
     for (int i = 0; i < finallist.size(); i++) {
       ScoreObj sobj = finallist.get(i);
